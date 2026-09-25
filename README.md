@@ -7,8 +7,9 @@ tahu cara deploy (playbook di `AGENTS.md`).
 ## Isi
 | File | Fungsi |
 |------|--------|
-| `Dockerfile` | Image hermes + dashboard di :9119 + HEALTHCHECK (cegah 502 saat redeploy) |
-| `AGENTS.md` | Playbook deploy — dibaca Codex & Claude Code otomatis |
+| `Dockerfile` | Image Hermes + dashboard :9119 + HEALTHCHECK |
+| `docker-compose.yml` | Build image dan named volume `hermes-data:/opt/data` |
+| `AGENTS.md` | Playbook deploy Handlify dengan persistence dan auth |
 | `CLAUDE.md` | Pointer ke AGENTS.md untuk Claude Code |
 | `DEPLOY-PROMPT.md` | Prompt pertama siap-tempel |
 | `scripts/setup-agents.sh` | Install Claude Code + Codex |
@@ -34,20 +35,16 @@ npm install -g @openai/codex               # -> codex
 ```
 
 ### Jalankan deploy
-1. Buka folder repo ini, jalankan `claude` atau `codex`.
-2. Tempel isi `DEPLOY-PROMPT.md` sebagai prompt pertama.
-3. Agent akan: deploy langsung dari repo public ini (build_pack=dockerfile, port
-   9119) → arahkan kamu isi env auth di dashboard Handlify → batasi akses → verifikasi.
-   Kamu TIDAK perlu bikin/push repo sendiri (kecuali mau ubah Dockerfile → fork dulu).
+1. Gunakan fork `apiep/docker-hermes-sample` di Handlify dengan `compose=true`, `compose_location=/docker-compose.yml`, `build_pack=dockercompose`, dan port `9119`.
+2. Compose memasang named volume `hermes-data` pada `/opt/data`; jangan gunakan deploy pack Dockerfile biasa karena akan melewatkan volume.
+3. Buat app tanpa auto-deploy, batasi akses ke `afief@qiscus.com`, lalu set basic auth dan `HERMES_DASHBOARD_PUBLIC_URL` lewat secure secrets link.
+4. Owner klik Apply & redeploy; verifikasi log readiness, auth, URL, dan persistent mount.
 
-## Yang WAJIB diingat (ringkas dari AGENTS.md)
-1. **Deploy dari repo public ini** — `create_app_from_repo` diarahkan ke URL repo ini
-   + `build_pack=dockerfile`. `deploy_project` tak bisa build Dockerfile. Nama app
-   harus unik (jangan "hermes-agent").
-2. **Auth pakai `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` (plaintext)**, JANGAN
-   `_PASSWORD_HASH` (karakter `$` kepotong → gagal login).
-3. **HEALTHCHECK** di Dockerfile → hilangkan 502 Bad Gateway tiap deploy.
-4. Env secret diisi owner via link `manage_secrets` (out-of-band, bukan di repo).
+## Yang wajib diingat
+1. **Persistence:** jangan hapus/ganti volume `hermes-data` atau mount `/opt/data`.
+2. **Auth:** gunakan `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` (plaintext), bukan `_PASSWORD_HASH`; secrets hanya via Handlify secure UI.
+3. **Akses:** set Handlify `team` allow-list sebelum deployment publik.
+4. **Healthcheck:** Dockerfile menunggu Hermes boot sebelum menandai sehat.
 
 ## Prasyarat akses
 MCP `qiscus-builder` (Handlify) aktif. Base image `nousresearch/hermes-agent:latest`

@@ -33,57 +33,50 @@ CMD ["gateway", "run"]
 
 ## Langkah deploy
 
-### 1. Deploy dari repo public ini (default — TIDAK perlu bikin/push repo)
-Dockerfile sudah ada di repo ini dan publik, jadi arahkan Coolify langsung ke
-URL-nya. `deploy_project` TIDAK bisa build Dockerfile (cuma static/node) — pakai
-`create_app_from_repo`.
+### 1. Deploy fork ini memakai Docker Compose agar volume persisten terpasang
+Repo fork berisi `docker-compose.yml` yang build `Dockerfile` dan memasang named volume `hermes-data` ke `/opt/data`. Gunakan Compose; deploy sebagai Dockerfile biasa akan melewatkan volume.
 
 ```
 create_app_from_repo(
-  name          = "hermes-<nama-unik>",   # JANGAN "hermes-agent" (nabrak app lain)
-  git_repository= "https://github.com/rajapulau/docker-hermes-sample.git",
-  git_branch    = "main",
-  build_pack    = "dockerfile",
-  ports_exposes = "9119",
-  project_uuid  = <list_projects>,         # project Handlify
-  server_uuid   = <list_servers>,          # server handlify-node-*
+  name             = "hermes-<nama-unik>",
+  git_repository   = "https://github.com/apiep/docker-hermes-sample.git",
+  git_branch       = "main",
+  compose          = True,
+  compose_location = "/docker-compose.yml",
+  build_pack       = "dockercompose",
+  ports_exposes    = "9119",
+  project_uuid     = <list_projects>,
+  server_uuid      = <list_servers>,
+  instant_deploy   = False,  # auth + access policy sebelum deploy pertama
 )
 ```
-Simpan `uuid` app dari hasilnya untuk langkah berikutnya.
+Simpan `uuid` dan URL app. Jangan ubah nama volume atau mount path tanpa migrasi data.
 
-Mau ubah Dockerfile? Fork repo ini dulu, push perubahan, lalu ganti
-`git_repository` ke fork-mu (atau pakai `deploy_private_repo` untuk repo
-private / Forgejo `gitlab.qiscus.io`). Untuk deploy standar, ini tidak perlu.
-
-### 3. Auth dashboard  ← JEBAKAN UTAMA
-Hermes MENOLAK bind dashboard ke 0.0.0.0 tanpa auth provider → container crash-loop.
-Set basic auth lewat ENV. Owner mengisi lewat link dari `manage_secrets(uuid)`
-(write-only, out-of-band — JANGAN taruh secret di repo / chat):
+### 2. Siapkan autentikasi sebelum deploy
+Hermes MENOLAK bind dashboard ke 0.0.0.0 tanpa auth provider. Set environment via `manage_secrets(uuid)` (owner mengisi out-of-band, jangan taruh secret di repo/chat):
 
 ```
 HERMES_DASHBOARD_BASIC_AUTH_USERNAME=admin
 HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=<password alfanumerik>
-HERMES_DASHBOARD_BASIC_AUTH_SECRET=<random hex 32 byte>   # opsional, sesi stabil
+HERMES_DASHBOARD_BASIC_AUTH_SECRET=<random hex 32 byte>   # opsional
+HERMES_DASHBOARD_PUBLIC_URL=<URL app yang diberikan Handlify>
 ```
 
 PENTING: pakai `_PASSWORD` (plaintext), **JANGAN** `_PASSWORD_HASH`.
-Hash scrypt mengandung karakter `$` yang kepotong saat ditempel ke env → login
-gagal "Invalid username or password". Password alfanumerik aman; hermes hash
-sendiri di memori (log: `hashed env-supplied password in-memory`).
-Setelah isi env → Apply & redeploy.
+Setelah mengisi env, klik Apply & redeploy.
 
-### 4. Batasi akses URL (gerbang Google SSO Handlify)
+### 3. Batasi akses URL (gerbang Google SSO Handlify)
 ```
-set_access(uuid, level="team", allow="email1@qiscus.com, email2@qiscus.com")
+set_access(uuid, level="team", allow="afief@qiscus.com")
 ```
-Level lain: `company` (semua @qiscus.com), `public`, `password`.
+Set policy sebelum deploy dan verifikasi via `get_access`.
 
-### 5. Verifikasi
-- `list_deployments_for_app(uuid)` → status finished.
-- `get_logs(uuid)` → muncul `HERMES_DASHBOARD_READY port=9119` (bukan
-  "Refusing to bind dashboard").
-- URL balas HTTP 302 ke SSO Google secara stabil (bukan 502).
-- Login: Google (email tim) → form hermes (admin + password).
+### 4. Verifikasi
+- `list_deployments_for_app(uuid)` → deployment finished.
+- `get_logs(uuid)` → muncul `HERMES_DASHBOARD_READY port=9119`, bukan bind error.
+- Pastikan volume `hermes-data` terpasang di `/opt/data` setelah deploy.
+- URL mengarah ke SSO Handlify dan dashboard Hermes meminta basic auth.
+- Pastikan `/api/status` sehat sebelum menyatakan selesai.
 
 ## Catatan
 - Saat redeploy, tunggu ~1 menit; berkat HEALTHCHECK 502 minimal/hilang.
