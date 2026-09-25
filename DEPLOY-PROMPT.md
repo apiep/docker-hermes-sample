@@ -7,14 +7,13 @@ Fork ini menambahkan Compose named volume `hermes-data:/opt/data`. Jangan deploy
    - `git_repository="https://github.com/apiep/docker-hermes-sample.git"`
    - `git_branch="main"`
    - `compose=true`, `compose_location="/docker-compose.yml"`, `build_pack="dockercompose"`
-   - `ports_exposes="9119"`, project/server UUID sesuai Handlify
-   - `instant_deploy=false`
-2. Set akses ke team allow-list `afief@qiscus.com` sebelum deploy.
+   - `fqdn_env="SERVICE_FQDN_HERMES_9119"`, `ports_exposes="9119"`, project/server UUID sesuai Handlify
+2. Set akses ke team allow-list `afief@qiscus.com` segera setelah app dibuat; jangan mengandalkan `instant_deploy=false` pada Compose deployment.
 3. Owner mengisi via link `manage_secrets(uuid)`:
    - `HERMES_DASHBOARD_BASIC_AUTH_USERNAME=admin`
    - `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=<password alfanumerik>` (jangan gunakan `_PASSWORD_HASH`)
    - `HERMES_DASHBOARD_BASIC_AUTH_SECRET=<random hex 32 byte>` (opsional)
-   - `HERMES_DASHBOARD_PUBLIC_URL=<URL Handlify yang dibuat>`
+   - `HERMES_DASHBOARD_PUBLIC_URL` otomatis memakai URL stabil dari `SERVICE_URL_HERMES_9119`
 4. Klik Apply & redeploy.
 5. Verifikasi deployment finished, log `HERMES_DASHBOARD_READY port=9119`, akses SSO Handlify, dashboard basic auth, dan mount named volume di `/opt/data`.
 

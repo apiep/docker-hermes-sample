@@ -35,10 +35,10 @@ npm install -g @openai/codex               # -> codex
 ```
 
 ### Jalankan deploy
-1. Gunakan fork `apiep/docker-hermes-sample` di Handlify dengan `compose=true`, `compose_location=/docker-compose.yml`, `build_pack=dockercompose`, dan port `9119`.
-2. Compose memasang named volume `hermes-data` pada `/opt/data`; jangan gunakan deploy pack Dockerfile biasa karena akan melewatkan volume.
-3. Buat app tanpa auto-deploy, batasi akses ke `afief@qiscus.com`, lalu set basic auth dan `HERMES_DASHBOARD_PUBLIC_URL` lewat secure secrets link.
-4. Owner klik Apply & redeploy; verifikasi log readiness, auth, URL, dan persistent mount.
+1. Gunakan fork `apiep/docker-hermes-sample` di Handlify dengan `compose=true`, `compose_location=/docker-compose.yml`, `build_pack=dockercompose`, `fqdn_env=SERVICE_FQDN_HERMES_9119`, dan port internal `9119`.
+2. Compose memasang named volume `hermes-data` pada `/opt/data`; jangan gunakan deploy pack Dockerfile biasa karena akan melewatkan volume. URL publik dihasilkan untuk port 9119 dan diberikan ke Hermes sebagai `HERMES_DASHBOARD_PUBLIC_URL`.
+3. Setelah app dibuat, set akses ke `afief@qiscus.com` segera. Jangan mengandalkan `instant_deploy=false` untuk menunda Compose deployment.
+4. Set basic auth username/password lewat secure secrets link. Owner klik Apply & redeploy; verifikasi log readiness, auth, URL, dan persistent mount.
 
 ## Yang wajib diingat
 1. **Persistence:** jangan hapus/ganti volume `hermes-data` atau mount `/opt/data`.

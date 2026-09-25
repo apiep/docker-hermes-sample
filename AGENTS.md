@@ -44,32 +44,31 @@ create_app_from_repo(
   compose          = True,
   compose_location = "/docker-compose.yml",
   build_pack       = "dockercompose",
+  fqdn_env         = "SERVICE_FQDN_HERMES_9119",
   ports_exposes    = "9119",
   project_uuid     = <list_projects>,
   server_uuid      = <list_servers>,
-  instant_deploy   = False,  # auth + access policy sebelum deploy pertama
 )
 ```
-Simpan `uuid` dan URL app. Jangan ubah nama volume atau mount path tanpa migrasi data.
+Handlify's Compose builder may start deployment even if `instant_deploy=False`; set the team access policy immediately after app creation. The Compose variables `SERVICE_URL_HERMES_9119` / `SERVICE_FQDN_HERMES_9119` route the `hermes` service to internal port 9119, and `HERMES_DASHBOARD_PUBLIC_URL` is derived from the generated stable URL. Save the app UUID. Do not change the named volume or mount path without a state migration.
 
-### 2. Siapkan autentikasi sebelum deploy
-Hermes MENOLAK bind dashboard ke 0.0.0.0 tanpa auth provider. Set environment via `manage_secrets(uuid)` (owner mengisi out-of-band, jangan taruh secret di repo/chat):
+### 2. Siapkan autentikasi untuk redeploy
+Hermes MENOLAK bind dashboard ke 0.0.0.0 tanpa auth provider. Setelah app dibuat, owner mengisi environment via `manage_secrets(uuid)` (out-of-band; jangan taruh secret di repo/chat):
 
 ```
 HERMES_DASHBOARD_BASIC_AUTH_USERNAME=admin
 HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=<password alfanumerik>
 HERMES_DASHBOARD_BASIC_AUTH_SECRET=<random hex 32 byte>   # opsional
-HERMES_DASHBOARD_PUBLIC_URL=<URL app yang diberikan Handlify>
 ```
 
-PENTING: pakai `_PASSWORD` (plaintext), **JANGAN** `_PASSWORD_HASH`.
+`HERMES_DASHBOARD_PUBLIC_URL` otomatis diturunkan dari `SERVICE_URL_HERMES_9119`; jangan diset manual. PENTING: pakai `_PASSWORD` (plaintext), **JANGAN** `_PASSWORD_HASH`.
 Setelah mengisi env, klik Apply & redeploy.
 
-### 3. Batasi akses URL (gerbang Google SSO Handlify)
+### 3. Verifikasi akses URL (gerbang Google SSO Handlify)
 ```
-set_access(uuid, level="team", allow="afief@qiscus.com")
+get_access(uuid)
 ```
-Set policy sebelum deploy dan verifikasi via `get_access`.
+Pastikan level `team` dan `afief@qiscus.com` di allow-list. Set policy segera setelah pembuatan app.
 
 ### 4. Verifikasi
 - `list_deployments_for_app(uuid)` → deployment finished.
